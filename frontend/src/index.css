@@ -1,0 +1,77 @@
+/* ─── IMPORTS ──────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap');
+
+/* ─── VARIABLES ────────────────────────────────────────────────── */
+:root {
+  --bg-primary:    #0a0a0f;
+  --bg-secondary:  #111118;
+  --bg-card:       #14141d;
+  --bg-hover:      #1a1a26;
+  --border:        #1e1e2e;
+  --border-light:  #2a2a3e;
+  --accent:        #6c63ff;
+  --accent-hover:  #5850e6;
+  --text-primary:  #f0f0f8;
+  --text-secondary:#8888a8;
+  --text-muted:    #555570;
+  --green:         #43d9a2;
+  --orange:        #ff9f6b;
+  --red:           #ff6584;
+  --blue:          #5eb3ff;
+}
+
+/* ─── RESET ─────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input, select, textarea {
+  font-family: inherit;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* ─── SCROLLBAR ────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-light);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}

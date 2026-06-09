@@ -1,0 +1,35 @@
+.toast {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 20px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 500;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  opacity: 0;
+  transform: translateX(100px);
+  transition: all 0.3s ease;
+  z-index: 10000;
+  max-width: 400px;
+}
+
+.toast--show {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.toast--success {
+  border-left: 3px solid var(--green);
+}
+
+.toast--error {
+  border-left: 3px solid var(--red);
+}
+
+.toast--info {
+  border-left: 3px solid var(--blue);
+}
