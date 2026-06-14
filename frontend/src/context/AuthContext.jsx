@@ -1,99 +1,38 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-import { authAPI } from '../services/api';
+import { createContext, useContext, useState, useCallback } from 'react';
 
 const AuthContext = createContext(null);
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
-  }
-  return context;
-};
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('user')); } catch { return null; }
+  });
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  // ─── CHECK IF USER IS LOGGED IN ────────────────────────────────
-  useEffect(() => {
-    const token = localStorage.getItem('job_portal_token');
-    const savedUser = localStorage.getItem('job_portal_user');
-
-    if (token && savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
-    setLoading(false);
+  const login = useCallback((token, userData) => {
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(userData));
+    setUser(userData);
   }, []);
 
-  // ─── LOGIN ─────────────────────────────────────────────────────
-  const login = async (credentials) => {
-    try {
-      const response = await authAPI.login(credentials);
-      const { token, user } = response.data;
-
-      localStorage.setItem('job_portal_token', token);
-      localStorage.setItem('job_portal_user', JSON.stringify(user));
-      setUser(user);
-
-      return { success: true, user };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.response?.data?.message || 'Login failed'
-      };
-    }
-  };
-
-  // ─── SIGNUP ────────────────────────────────────────────────────
-  const signup = async (data) => {
-    try {
-      const response = await authAPI.signup(data);
-      const { token, user } = response.data;
-
-      localStorage.setItem('job_portal_token', token);
-      localStorage.setItem('job_portal_user', JSON.stringify(user));
-      setUser(user);
-
-      return { success: true, user };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.response?.data?.message || 'Signup failed'
-      };
-    }
-  };
-
-  // ─── LOGOUT ────────────────────────────────────────────────────
-  const logout = () => {
-    localStorage.removeItem('job_portal_token');
-    localStorage.removeItem('job_portal_user');
+  const logout = useCallback(() => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setUser(null);
-  };
+  }, []);
 
-  // ─── CHECK IF USER IS ADMIN ────────────────────────────────────
-  const isAdmin = () => {
-    return user?.role === 'admin';
-  };
-
-  // ─── CHECK IF AUTHENTICATED ────────────────────────────────────
-  const isAuthenticated = () => {
-    return !!user;
-  };
-
-  const value = {
-    user,
-    loading,
-    login,
-    signup,
-    logout,
-    isAdmin,
-    isAuthenticated
-  };
+  const isAuthenticated = () => !!user && !!localStorage.getItem('token');
+  const isAdmin    = () => user?.role === 'admin';
+  const isCompany  = () => user?.role === 'company' || user?.role === 'admin';
+  const isJobSeeker= () => user?.role === 'user';
 
   return (
-    <AuthContext.Provider value={value}>
-      {!loading && children}
+    <AuthContext.Provider value={{ user, login, logout, isAuthenticated, isAdmin, isCompany, isJobSeeker }}>
+      {children}
     </AuthContext.Provider>
   );
+}
+
+export const useAuth = () => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used inside AuthProvider');
+  return ctx;
 };

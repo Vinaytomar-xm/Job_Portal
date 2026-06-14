@@ -2,229 +2,128 @@ const express = require('express');
 const router = express.Router();
 const Application = require('../models/Application');
 const Job = require('../models/Job');
-const { protect, authorize } = require('../middleware/auth');
+const { protect, restrictTo } = require('../middleware/auth');
+const { sendStatusUpdateEmail } = require('../utils/email');
 
-// ─── APPLY FOR A JOB (USER ONLY) ────────────────────────────────
-// POST /api/applications
-router.post('/', protect, authorize('user'), async (req, res) => {
+// ── POST /api/applications/:jobId/apply  (USER - apply to job)
+router.post('/:jobId/apply', protect, restrictTo('user'), async (req, res) => {
   try {
-    const { jobId, coverLetter, resume } = req.body;
+    const job = await Job.findById(req.params.jobId);
+    if (!job) return res.status(404).json({ message: 'Job not found' });
+    if (!job.isActive) return res.status(400).json({ message: 'This job is no longer accepting applications' });
 
-    // Check if job exists
-    const job = await Job.findById(jobId);
-    if (!job) {
-      return res.status(404).json({
-        success: false,
-        message: '❌ Job not found'
-      });
-    }
+    // Check duplicate
+    const existing = await Application.findOne({ job: job._id, applicant: req.user._id });
+    if (existing) return res.status(400).json({ message: 'You have already applied for this job' });
 
-    // Check if already applied
-    const existingApplication = await Application.findOne({
-      job: jobId,
-      user: req.user._id
-    });
-
-    if (existingApplication) {
-      return res.status(400).json({
-        success: false,
-        message: '❌ You have already applied for this job'
-      });
-    }
-
-    // Create application
     const application = await Application.create({
-      job: jobId,
-      user: req.user._id,
-      coverLetter,
-      resume
+      job: job._id,
+      applicant: req.user._id,
+      company: job.postedBy,
+      coverLetter: req.body.coverLetter || '',
+      resumeUrl: req.body.resumeUrl || req.user.resumeUrl || '',
+      status: 'pending',
     });
 
-    // Increment applications count
-    await Job.findByIdAndUpdate(jobId, {
-      $inc: { applicationsCount: 1 }
-    });
+    // Increment applications count on job
+    await Job.findByIdAndUpdate(job._id, { $inc: { applicationsCount: 1 } });
 
-    res.status(201).json({
-      success: true,
-      message: '✅ Application submitted successfully',
-      application
-    });
+    await application.populate([
+      { path: 'job', select: 'title companyName location type' },
+      { path: 'applicant', select: 'name email' },
+    ]);
 
-  } catch (error) {
-    if (error.code === 11000) {
-      return res.status(400).json({
-        success: false,
-        message: '❌ You have already applied for this job'
-      });
-    }
-    
-    res.status(500).json({
-      success: false,
-      message: '❌ Failed to submit application',
-      error: error.message
-    });
+    res.status(201).json({ application, message: 'Application submitted successfully!' });
+  } catch (err) {
+    if (err.code === 11000) return res.status(400).json({ message: 'You have already applied for this job' });
+    res.status(500).json({ message: err.message });
   }
 });
 
-// ─── GET USER'S APPLICATIONS (USER) ──────────────────────────────
-// GET /api/applications/my
-router.get('/my', protect, authorize('user'), async (req, res) => {
+// ── GET /api/applications/my-applications  (USER - own applications)
+router.get('/my-applications', protect, restrictTo('user'), async (req, res) => {
   try {
-    const applications = await Application.find({ user: req.user._id })
-      .populate('job', 'title company location type salary')
-      .sort({ appliedAt: -1 });
-
-    res.status(200).json({
-      success: true,
-      count: applications.length,
-      applications
-    });
-
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: '❌ Failed to fetch applications',
-      error: error.message
-    });
+    const applications = await Application.find({ applicant: req.user._id })
+      .populate('job', 'title companyName location type salary category companyLogo isActive')
+      .sort({ createdAt: -1 });
+    res.json({ applications });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 
-// ─── GET ALL APPLICATIONS (ADMIN) ────────────────────────────────
-// GET /api/applications
-router.get('/', protect, authorize('admin'), async (req, res) => {
+// ── GET /api/applications/company-applications  (COMPANY - all apps for their jobs)
+router.get('/company-applications', protect, restrictTo('company', 'admin'), async (req, res) => {
   try {
-    const { status, jobId, page = 1, limit = 20 } = req.query;
+    const filter = req.user.role === 'admin' ? {} : { company: req.user._id };
+    const { jobId, status } = req.query;
+    if (jobId) filter.job = jobId;
+    if (status && status !== 'All') filter.status = status;
 
-    let query = {};
+    const applications = await Application.find(filter)
+      .populate('job', 'title location type category')
+      .populate('applicant', 'name email phone resumeUrl')
+      .sort({ createdAt: -1 });
 
-    if (status && status !== 'all') {
-      query.status = status;
-    }
-
-    if (jobId) {
-      query.job = jobId;
-    }
-
-    const skip = (page - 1) * limit;
-
-    const applications = await Application.find(query)
-      .populate('user', 'name email phone')
-      .populate('job', 'title company location type')
-      .sort({ appliedAt: -1 })
-      .limit(parseInt(limit))
-      .skip(skip);
-
-    const total = await Application.countDocuments(query);
-
-    res.status(200).json({
-      success: true,
-      count: applications.length,
-      total,
-      pages: Math.ceil(total / limit),
-      currentPage: parseInt(page),
-      applications
-    });
-
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: '❌ Failed to fetch applications',
-      error: error.message
-    });
+    res.json({ applications });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 
-// ─── GET SINGLE APPLICATION (ADMIN) ──────────────────────────────
-// GET /api/applications/:id
-router.get('/:id', protect, authorize('admin'), async (req, res) => {
+// ── PUT /api/applications/:id/status  (COMPANY - update status & send email)
+router.put('/:id/status', protect, restrictTo('company', 'admin'), async (req, res) => {
   try {
+    const { status, companyNote } = req.body;
+    const validStatuses = ['pending', 'reviewed', 'shortlisted', 'accepted', 'rejected'];
+    if (!validStatuses.includes(status))
+      return res.status(400).json({ message: 'Invalid status value' });
+
     const application = await Application.findById(req.params.id)
-      .populate('user', 'name email phone')
-      .populate('job', 'title company location type salary description');
+      .populate('job', 'title companyName location')
+      .populate('applicant', 'name email');
 
-    if (!application) {
-      return res.status(404).json({
-        success: false,
-        message: '❌ Application not found'
+    if (!application) return res.status(404).json({ message: 'Application not found' });
+
+    // Verify company owns this application
+    if (req.user.role !== 'admin' && application.company.toString() !== req.user._id.toString())
+      return res.status(403).json({ message: 'Not authorized' });
+
+    const oldStatus = application.status;
+    application.status = status;
+    if (companyNote !== undefined) application.companyNote = companyNote;
+    await application.save();
+
+    // ── SEND EMAIL if status changed & email not already sent for this status ──
+    if (oldStatus !== status && application.emailSentFor !== status) {
+      application.emailSentFor = status;
+      await application.save();
+
+      await sendStatusUpdateEmail({
+        toEmail: application.applicant.email,
+        toName: application.applicant.name,
+        jobTitle: application.job.title,
+        companyName: application.job.companyName,
+        status,
       });
     }
 
-    res.status(200).json({
-      success: true,
-      application
-    });
-
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: '❌ Failed to fetch application',
-      error: error.message
-    });
+    res.json({ application, message: `Application marked as ${status}` });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 
-// ─── UPDATE APPLICATION STATUS (ADMIN) ───────────────────────────
-// PUT /api/applications/:id/status
-router.put('/:id/status', protect, authorize('admin'), async (req, res) => {
+// ── GET /api/applications/check/:jobId  (USER - check if already applied)
+router.get('/check/:jobId', protect, restrictTo('user'), async (req, res) => {
   try {
-    const { status } = req.body;
-
-    const application = await Application.findByIdAndUpdate(
-      req.params.id,
-      { status },
-      { new: true, runValidators: true }
-    ).populate('user', 'name email')
-     .populate('job', 'title company');
-
-    if (!application) {
-      return res.status(404).json({
-        success: false,
-        message: '❌ Application not found'
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: '✅ Application status updated',
-      application
+    const application = await Application.findOne({
+      job: req.params.jobId,
+      applicant: req.user._id,
     });
-
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: '❌ Failed to update application status',
-      error: error.message
-    });
-  }
-});
-
-// ─── DELETE APPLICATION (ADMIN) ──────────────────────────────────
-// DELETE /api/applications/:id
-router.delete('/:id', protect, authorize('admin'), async (req, res) => {
-  try {
-    const application = await Application.findById(req.params.id);
-
-    if (!application) {
-      return res.status(404).json({
-        success: false,
-        message: '❌ Application not found'
-      });
-    }
-
-    await Application.findByIdAndDelete(req.params.id);
-
-    res.status(200).json({
-      success: true,
-      message: '✅ Application deleted successfully'
-    });
-
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: '❌ Failed to delete application',
-      error: error.message
-    });
+    res.json({ applied: !!application, application });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 

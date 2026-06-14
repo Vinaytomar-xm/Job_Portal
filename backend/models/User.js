@@ -6,7 +6,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Name is required'],
     trim: true,
-    minlength: [2, 'Name must be at least 2 characters']
+    minlength: [2, 'Name must be at least 2 characters'],
   },
   email: {
     type: String,
@@ -14,46 +14,49 @@ const userSchema = new mongoose.Schema({
     unique: true,
     lowercase: true,
     trim: true,
-    match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email']
+    match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email'],
   },
   password: {
     type: String,
     required: [true, 'Password is required'],
     minlength: [6, 'Password must be at least 6 characters'],
-    select: false // Don't return password by default
+    select: false,
   },
+  // 'user' = job seeker | 'company' = recruiter | 'admin' = super admin
   role: {
     type: String,
-    enum: ['user', 'admin'],
-    default: 'user'
+    enum: ['user', 'company', 'admin'],
+    default: 'user',
   },
-  phone: {
+
+  // ── Company-specific fields ──
+  companyName: { type: String, trim: true },
+  companyWebsite: { type: String, trim: true },
+  companySize: {
     type: String,
-    trim: true
+    enum: ['1-10', '11-50', '51-200', '201-500', '500+', ''],
+    default: '',
   },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
-}, {
-  timestamps: true
-});
+  companyDescription: { type: String, trim: true },
+  companyLogo: { type: String, trim: true }, // URL or initials fallback
 
-// ─── HASH PASSWORD BEFORE SAVING ──────────────────────────────────
-userSchema.pre('save', async function(next) {
-  // Only hash if password is modified
-  if (!this.isModified('password')) {
-    return next();
-  }
+  // ── Job-seeker fields ──
+  phone: { type: String, trim: true },
+  resumeUrl: { type: String, trim: true },
 
+  createdAt: { type: Date, default: Date.now },
+}, { timestamps: true });
+
+// Hash password before save
+userSchema.pre('save', async function (next) {
+  if (!this.isModified('password')) return next();
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
   next();
 });
 
-// ─── COMPARE PASSWORD METHOD ──────────────────────────────────────
-userSchema.methods.comparePassword = async function(candidatePassword) {
-  return await bcrypt.compare(candidatePassword, this.password);
+userSchema.methods.comparePassword = async function (candidatePassword) {
+  return bcrypt.compare(candidatePassword, this.password);
 };
 
 module.exports = mongoose.model('User', userSchema);

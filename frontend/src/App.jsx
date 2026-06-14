@@ -1,96 +1,74 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import Login from './pages/Login';
-import Signup from './pages/Signup';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import { ToastProvider } from './context/ToastContext';
+import Navbar from './components/Navbar';
+import Footer from './components/Footer';
+import ProtectedRoute from './components/ProtectedRoute';
+
+// Pages
+import Home          from './pages/Home';
+import Jobs          from './pages/Jobs';
+import JobDetail     from './pages/JobDetail';
+import Login         from './pages/Login';
+import Register      from './pages/Register';
+import CompanyRegister from './pages/CompanyRegister';
 import UserDashboard from './pages/UserDashboard';
-import AdminDashboard from './pages/AdminDashboard';
-import Toast from './components/Toast';
+import CompanyDashboard from './pages/CompanyDashboard';
+import PostJob       from './pages/PostJob';
 
-// ─── PROTECTED ROUTE ─────────────────────────────────────────────
-const ProtectedRoute = ({ children, requireAdmin = false }) => {
-  const { isAuthenticated, isAdmin } = useAuth();
-
-  if (!isAuthenticated()) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (requireAdmin && !isAdmin()) {
-    return <Navigate to="/user/dashboard" replace />;
-  }
-
-  return children;
-};
-
-// ─── PUBLIC ROUTE (REDIRECT IF LOGGED IN) ────────────────────────
-const PublicRoute = ({ children }) => {
-  const { isAuthenticated, isAdmin } = useAuth();
-
-  if (isAuthenticated()) {
-    return <Navigate to={isAdmin() ? '/admin/dashboard' : '/user/dashboard'} replace />;
-  }
-
-  return children;
-};
-
-// ─── APP ROUTES ──────────────────────────────────────────────────
-function AppRoutes() {
+function NotFound() {
   return (
-    <Routes>
-      {/* Public Routes */}
-      <Route 
-        path="/login" 
-        element={
-          <PublicRoute>
-            <Login />
-          </PublicRoute>
-        } 
-      />
-      <Route 
-        path="/signup" 
-        element={
-          <PublicRoute>
-            <Signup />
-          </PublicRoute>
-        } 
-      />
-
-      {/* User Routes */}
-      <Route 
-        path="/user/dashboard" 
-        element={
-          <ProtectedRoute>
-            <UserDashboard />
-          </ProtectedRoute>
-        } 
-      />
-
-      {/* Admin Routes */}
-      <Route 
-        path="/admin/dashboard" 
-        element={
-          <ProtectedRoute requireAdmin>
-            <AdminDashboard />
-          </ProtectedRoute>
-        } 
-      />
-
-      {/* Default Route */}
-      <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="*" element={<Navigate to="/login" replace />} />
-    </Routes>
+    <div style={{ textAlign: 'center', padding: '100px 24px' }}>
+      <h1 style={{ fontSize: 64, fontWeight: 900, color: 'var(--primary)' }}>404</h1>
+      <p style={{ fontSize: 20, color: 'var(--text-2)', margin: '16px 0' }}>Page not found</p>
+      <a href="/" className="btn btn-primary" style={{ display: 'inline-flex' }}>Go Home</a>
+    </div>
   );
 }
 
-// ─── MAIN APP ────────────────────────────────────────────────────
-function App() {
+export default function App() {
   return (
     <Router>
       <AuthProvider>
-        <AppRoutes />
-        <Toast />
+        <ToastProvider>
+          <div className="page-wrapper">
+            <Navbar />
+            <main className="page-content" style={{ padding: 0 }}>
+              <Routes>
+                {/* Public */}
+                <Route path="/"               element={<Home />} />
+                <Route path="/jobs"           element={<Jobs />} />
+                <Route path="/jobs/:id"       element={<JobDetail />} />
+                <Route path="/login"          element={<Login />} />
+                <Route path="/register"       element={<Register />} />
+                <Route path="/company/register" element={<CompanyRegister />} />
+
+                {/* Job Seeker protected */}
+                <Route path="/dashboard" element={
+                  <ProtectedRoute roles={['user']}>
+                    <UserDashboard />
+                  </ProtectedRoute>
+                } />
+
+                {/* Company protected */}
+                <Route path="/company/dashboard" element={
+                  <ProtectedRoute roles={['company', 'admin']}>
+                    <CompanyDashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/company/post-job" element={
+                  <ProtectedRoute roles={['company', 'admin']}>
+                    <PostJob />
+                  </ProtectedRoute>
+                } />
+
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </main>
+            <Footer />
+          </div>
+        </ToastProvider>
       </AuthProvider>
     </Router>
   );
 }
-
-export default App;

@@ -5,68 +5,51 @@ const jobSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Job title is required'],
     trim: true,
-    minlength: [3, 'Title must be at least 3 characters']
-  },
-  company: {
-    type: String,
-    required: [true, 'Company name is required'],
-    trim: true
-  },
-  location: {
-    type: String,
-    required: [true, 'Location is required'],
-    trim: true
-  },
-  type: {
-    type: String,
-    enum: ['Full-time', 'Part-time', 'Internship', 'Contract'],
-    default: 'Full-time'
-  },
-  experience: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  salary: {
-    type: String,
-    trim: true
   },
   description: {
     type: String,
     required: [true, 'Job description is required'],
-    minlength: [20, 'Description must be at least 20 characters']
   },
-  skills: {
-    type: [String],
-    default: []
-  },
-  responsibilities: {
-    type: [String],
-    default: []
-  },
-  requirements: {
-    type: [String],
-    default: []
-  },
-  status: {
+  requirements: { type: String },
+  location: { type: String, required: true, trim: true },
+  type: {
     type: String,
-    enum: ['active', 'closed'],
-    default: 'active'
+    enum: ['Full-Time', 'Part-Time', 'Internship', 'Remote', 'Freelance', 'Contract'],
+    default: 'Full-Time',
   },
-  createdBy: {
+  category: {
+    type: String,
+    enum: ['Technology', 'Marketing', 'Design', 'Finance', 'Sales', 'HR', 'Operations', 'Other'],
+    default: 'Other',
+  },
+  salary: {
+    type: String,
+    trim: true,
+    default: 'Not Disclosed',
+  },
+  experience: {
+    type: String,
+    enum: ['Fresher', '0-1 years', '1-3 years', '3-5 years', '5+ years'],
+    default: 'Fresher',
+  },
+  skills: [{ type: String, trim: true }],
+  openings: { type: Number, default: 1 },
+  deadline: { type: Date },
+  isActive: { type: Boolean, default: true },
+
+  // Company who posted this job
+  postedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: true,
   },
-  applicationsCount: {
-    type: Number,
-    default: 0
-  }
-}, {
-  timestamps: true
-});
+  companyName: { type: String, required: true },
+  companyLogo: { type: String },
 
-// ─── INDEX FOR FASTER SEARCH ─────────────────────────────────────
-jobSchema.index({ title: 'text', company: 'text', location: 'text' });
+  applicationsCount: { type: Number, default: 0 },
+}, { timestamps: true });
+
+// Text index for search
+jobSchema.index({ title: 'text', description: 'text', companyName: 'text', location: 'text' });
 
 module.exports = mongoose.model('Job', jobSchema);

@@ -1,66 +1,50 @@
 import axios from 'axios';
 
-// ─── API CONFIGURATION ───────────────────────────────────────────
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-
 const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  baseURL: '/api',
+  headers: { 'Content-Type': 'application/json' },
 });
 
-// ─── REQUEST INTERCEPTOR (ADD TOKEN) ─────────────────────────────
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('job_portal_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
+// Attach JWT token on every request
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
 
-// ─── RESPONSE INTERCEPTOR (HANDLE ERRORS) ────────────────────────
+// Global error handling
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Token expired or invalid
-      localStorage.removeItem('job_portal_token');
-      localStorage.removeItem('job_portal_user');
+  (res) => res,
+  (err) => {
+    if (err.response?.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
       window.location.href = '/login';
     }
-    return Promise.reject(error);
+    return Promise.reject(err);
   }
 );
 
-// ─── AUTH API ────────────────────────────────────────────────────
-export const authAPI = {
-  signup: (data) => api.post('/auth/signup', data),
-  login: (data) => api.post('/auth/login', data),
-  getMe: () => api.get('/auth/me'),
-};
+// ── Auth ──────────────────────────────────────
+export const registerUser    = (data) => api.post('/auth/register', data);
+export const registerCompany = (data) => api.post('/auth/company-register', data);
+export const loginUser       = (data) => api.post('/auth/login', data);
+export const getMe           = ()     => api.get('/auth/me');
 
-// ─── JOBS API ────────────────────────────────────────────────────
-export const jobsAPI = {
-  getAll: (params) => api.get('/jobs', { params }),
-  getById: (id) => api.get(`/jobs/${id}`),
-  create: (data) => api.post('/jobs', data),
-  update: (id, data) => api.put(`/jobs/${id}`, data),
-  delete: (id) => api.delete(`/jobs/${id}`),
-};
+// ── Jobs ──────────────────────────────────────
+export const getJobs      = (params) => api.get('/jobs', { params });
+export const getFeatured  = ()        => api.get('/jobs/featured');
+export const getJob       = (id)      => api.get(`/jobs/${id}`);
+export const getMyJobs    = ()        => api.get('/jobs/my-jobs');
+export const createJob    = (data)    => api.post('/jobs', data);
+export const updateJob    = (id, data)=> api.put(`/jobs/${id}`, data);
+export const deleteJob    = (id)      => api.delete(`/jobs/${id}`);
 
-// ─── APPLICATIONS API ────────────────────────────────────────────
-export const applicationsAPI = {
-  apply: (data) => api.post('/applications', data),
-  getMy: () => api.get('/applications/my'),
-  getAll: (params) => api.get('/applications', { params }),
-  updateStatus: (id, status) => api.put(`/applications/${id}/status`, { status }),
-  delete: (id) => api.delete(`/applications/${id}`),
-};
+// ── Applications ──────────────────────────────
+export const applyToJob         = (jobId, data) => api.post(`/applications/${jobId}/apply`, data);
+export const checkApplied       = (jobId)        => api.get(`/applications/check/${jobId}`);
+export const getMyApplications  = ()             => api.get('/applications/my-applications');
+export const getCompanyApps     = (params)       => api.get('/applications/company-applications', { params });
+export const updateAppStatus    = (id, data)     => api.put(`/applications/${id}/status`, data);
 
 export default api;

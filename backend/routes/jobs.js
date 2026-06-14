@@ -1,180 +1,129 @@
 const express = require('express');
 const router = express.Router();
 const Job = require('../models/Job');
-const { protect, authorize } = require('../middleware/auth');
+const { protect, restrictTo } = require('../middleware/auth');
 
-// ─── GET ALL JOBS (PUBLIC) ───────────────────────────────────────
-// GET /api/jobs
+// ── GET /api/jobs  (PUBLIC - browse/search/filter)
 router.get('/', async (req, res) => {
   try {
-    const { keyword, location, type, experience, page = 1, limit = 10 } = req.query;
+    const { search, category, type, location, experience, page = 1, limit = 10 } = req.query;
+    const filter = { isActive: true };
 
-    // Build query
-    let query = { status: 'active' };
-
-    if (keyword) {
-      query.$or = [
-        { title: { $regex: keyword, $options: 'i' } },
-        { company: { $regex: keyword, $options: 'i' } },
-        { skills: { $in: [new RegExp(keyword, 'i')] } }
+    if (search) {
+      filter.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { companyName: { $regex: search, $options: 'i' } },
+        { location: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
       ];
     }
+    if (category && category !== 'All') filter.category = category;
+    if (type && type !== 'All') filter.type = type;
+    if (location && location !== 'All') filter.location = { $regex: location, $options: 'i' };
+    if (experience && experience !== 'All') filter.experience = experience;
 
-    if (location && location !== 'all') {
-      query.location = { $regex: location, $options: 'i' };
-    }
-
-    if (type && type !== 'all') {
-      query.type = type;
-    }
-
-    if (experience && experience !== 'all') {
-      query.experience = { $regex: experience, $options: 'i' };
-    }
-
-    // Pagination
-    const skip = (page - 1) * limit;
-
-    const jobs = await Job.find(query)
-      .populate('createdBy', 'name email')
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const total = await Job.countDocuments(filter);
+    const jobs = await Job.find(filter)
       .sort({ createdAt: -1 })
+      .skip(skip)
       .limit(parseInt(limit))
-      .skip(skip);
+      .select('-__v');
 
-    const total = await Job.countDocuments(query);
-
-    res.status(200).json({
-      success: true,
-      count: jobs.length,
-      total,
-      pages: Math.ceil(total / limit),
-      currentPage: parseInt(page),
-      jobs
-    });
-
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: '❌ Failed to fetch jobs',
-      error: error.message
-    });
+    res.json({ jobs, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 
-// ─── GET SINGLE JOB ──────────────────────────────────────────────
-// GET /api/jobs/:id
+// ── GET /api/jobs/featured  (PUBLIC - latest 6 for homepage)
+router.get('/featured', async (req, res) => {
+  try {
+    const jobs = await Job.find({ isActive: true })
+      .sort({ createdAt: -1 })
+      .limit(6)
+      .select('title companyName location type salary category companyLogo createdAt');
+    res.json({ jobs });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ── GET /api/jobs/my-jobs  (COMPANY - their own jobs)
+router.get('/my-jobs', protect, restrictTo('company', 'admin'), async (req, res) => {
+  try {
+    const jobs = await Job.find({ postedBy: req.user._id }).sort({ createdAt: -1 });
+    res.json({ jobs });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ── GET /api/jobs/:id  (PUBLIC)
 router.get('/:id', async (req, res) => {
   try {
-    const job = await Job.findById(req.params.id).populate('createdBy', 'name email');
-
-    if (!job) {
-      return res.status(404).json({
-        success: false,
-        message: '❌ Job not found'
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      job
-    });
-
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: '❌ Failed to fetch job',
-      error: error.message
-    });
+    const job = await Job.findById(req.params.id);
+    if (!job) return res.status(404).json({ message: 'Job not found' });
+    res.json({ job });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 
-// ─── CREATE JOB (ADMIN ONLY) ─────────────────────────────────────
-// POST /api/jobs
-router.post('/', protect, authorize('admin'), async (req, res) => {
+// ── POST /api/jobs  (COMPANY only)
+router.post('/', protect, restrictTo('company', 'admin'), async (req, res) => {
   try {
-    const jobData = {
-      ...req.body,
-      createdBy: req.user._id
-    };
+    const { title, description, requirements, location, type, category,
+      salary, experience, skills, openings, deadline } = req.body;
 
-    const job = await Job.create(jobData);
-
-    res.status(201).json({
-      success: true,
-      message: '✅ Job created successfully',
-      job
+    const job = await Job.create({
+      title, description, requirements, location,
+      type: type || 'Full-Time',
+      category: category || 'Other',
+      salary, experience, skills,
+      openings: openings || 1,
+      deadline,
+      postedBy: req.user._id,
+      companyName: req.user.companyName || req.user.name,
+      companyLogo: req.user.companyLogo || '',
+      isActive: true,
     });
 
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: '❌ Failed to create job',
-      error: error.message
-    });
+    res.status(201).json({ job, message: 'Job posted successfully' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 
-// ─── UPDATE JOB (ADMIN ONLY) ─────────────────────────────────────
-// PUT /api/jobs/:id
-router.put('/:id', protect, authorize('admin'), async (req, res) => {
+// ── PUT /api/jobs/:id  (COMPANY - own job only)
+router.put('/:id', protect, restrictTo('company', 'admin'), async (req, res) => {
   try {
     const job = await Job.findById(req.params.id);
+    if (!job) return res.status(404).json({ message: 'Job not found' });
+    if (job.postedBy.toString() !== req.user._id.toString() && req.user.role !== 'admin')
+      return res.status(403).json({ message: 'Not authorized to edit this job' });
 
-    if (!job) {
-      return res.status(404).json({
-        success: false,
-        message: '❌ Job not found'
-      });
-    }
-
-    // Update job
-    const updatedJob = await Job.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
-
-    res.status(200).json({
-      success: true,
-      message: '✅ Job updated successfully',
-      job: updatedJob
+    const updated = await Job.findByIdAndUpdate(req.params.id, req.body, {
+      new: true, runValidators: true,
     });
-
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: '❌ Failed to update job',
-      error: error.message
-    });
+    res.json({ job: updated, message: 'Job updated successfully' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 
-// ─── DELETE JOB (ADMIN ONLY) ─────────────────────────────────────
-// DELETE /api/jobs/:id
-router.delete('/:id', protect, authorize('admin'), async (req, res) => {
+// ── DELETE /api/jobs/:id  (COMPANY - own job only)
+router.delete('/:id', protect, restrictTo('company', 'admin'), async (req, res) => {
   try {
     const job = await Job.findById(req.params.id);
-
-    if (!job) {
-      return res.status(404).json({
-        success: false,
-        message: '❌ Job not found'
-      });
-    }
+    if (!job) return res.status(404).json({ message: 'Job not found' });
+    if (job.postedBy.toString() !== req.user._id.toString() && req.user.role !== 'admin')
+      return res.status(403).json({ message: 'Not authorized to delete this job' });
 
     await Job.findByIdAndDelete(req.params.id);
-
-    res.status(200).json({
-      success: true,
-      message: '✅ Job deleted successfully'
-    });
-
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: '❌ Failed to delete job',
-      error: error.message
-    });
+    res.json({ message: 'Job deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 
