@@ -6,15 +6,15 @@ import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
 
 // Pages
-import Home          from './pages/Home';
-import Jobs          from './pages/Jobs';
-import JobDetail     from './pages/JobDetail';
-import Login         from './pages/Login';
-import Register      from './pages/Register';
+import Home from './pages/Home';
+import Jobs from './pages/Jobs';
+import JobDetail from './pages/JobDetail';
+import Login from './pages/Login';
+import Register from './pages/Register';
 import CompanyRegister from './pages/CompanyRegister';
 import UserDashboard from './pages/UserDashboard';
 import CompanyDashboard from './pages/CompanyDashboard';
-import PostJob       from './pages/PostJob';
+import PostJob from './pages/PostJob';
 
 function NotFound() {
   return (
@@ -36,11 +36,11 @@ export default function App() {
             <main className="page-content" style={{ padding: 0 }}>
               <Routes>
                 {/* Public */}
-                <Route path="/"               element={<Home />} />
-                <Route path="/jobs"           element={<Jobs />} />
-                <Route path="/jobs/:id"       element={<JobDetail />} />
-                <Route path="/login"          element={<Login />} />
-                <Route path="/register"       element={<Register />} />
+                <Route path="/" element={<Home />} />
+                <Route path="/jobs" element={<Jobs />} />
+                <Route path="/jobs/:id" element={<JobDetail />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
                 <Route path="/company/register" element={<CompanyRegister />} />
 
                 {/* Job Seeker protected */}

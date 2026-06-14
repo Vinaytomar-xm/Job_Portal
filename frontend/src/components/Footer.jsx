@@ -39,7 +39,7 @@ export default function Footer() {
           </div>
         </div>
         <div style={{ borderTop: '1px solid var(--border)', paddingTop: 20, textAlign: 'center' }}>
-          <p style={{ fontSize: 13, color: 'var(--text-3)' }}>© 2025 JobBoard. Built with ❤️</p>
+          <p style={{ fontSize: 13, color: 'var(--text-3)' }}>© 2025 JobBoard. Built with ❤️ Vinay Singh Tomar</p>
         </div>
       </div>
     </footer>
