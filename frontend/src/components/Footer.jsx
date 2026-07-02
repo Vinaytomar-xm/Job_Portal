@@ -79,20 +79,20 @@ export default function Footer() {
         {/* Bottom bar */}
         <div style={{
           borderTop: '1px solid var(--border)', paddingTop: 20,
-          display: 'flex', justifyContent: 'space-between',
+          display: 'flex', justifyContent: 'center',
           alignItems: 'center', flexWrap: 'wrap', gap: 12,
         }}>
           <p style={{ fontSize: 13, color: 'var(--text-3)' }}>
             © 2026 JobBoard · Built with ❤️ by Vinay Singh Tomar
           </p>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <SecurityBadge color="#43d9a2" bg="rgba(67,217,162,0.1)" border="rgba(67,217,162,0.25)">
               🔒 Secure Sessions
             </SecurityBadge>
             <SecurityBadge color="#6c63ff" bg="rgba(108,99,255,0.1)" border="rgba(108,99,255,0.25)">
               🍪 GDPR Compliant
             </SecurityBadge>
-          </div>
+          </div> */}
         </div>
       </div>
     </footer>
