@@ -12,9 +12,9 @@ export default function CompanyRegister() {
     companyName: '', companyWebsite: '', companySize: '', companyDescription: '',
   });
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
-  const toast = useToast();
-  const navigate = useNavigate();
+  const { login }  = useAuth();
+  const toast      = useToast();
+  const navigate   = useNavigate();
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
@@ -26,7 +26,7 @@ export default function CompanyRegister() {
     setLoading(true);
     try {
       const res = await registerCompany(form);
-      login(res.data.token, res.data.user);
+      login(res.data.user);   // token is in httpOnly cookie
       toast.success(`Welcome, ${res.data.user.companyName}! Start posting jobs 🚀`);
       navigate('/company/dashboard');
     } catch (err) {
@@ -47,18 +47,12 @@ export default function CompanyRegister() {
             fontWeight: 900, fontSize: 22, color: '#fff', margin: '0 auto 14px',
           }}>🏢</div>
           <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-1)' }}>Register your Company</h1>
-          <p style={{ color: 'var(--text-2)', marginTop: 6, fontSize: 15 }}>
-            Post jobs and find the right candidates
-          </p>
+          <p style={{ color: 'var(--text-2)', marginTop: 6, fontSize: 15 }}>Post jobs and find the right candidates</p>
         </div>
 
         <div className="card" style={{ padding: 32 }}>
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-            {/* Divider label */}
-            <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-              Company Details
-            </p>
+            <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Company Details</p>
 
             <div className="form-group">
               <label className="form-label">Company Name *</label>
@@ -74,8 +68,7 @@ export default function CompanyRegister() {
               </div>
               <div className="form-group">
                 <label className="form-label">Company Size</label>
-                <select className="form-input" value={form.companySize}
-                  onChange={e => set('companySize', e.target.value)}>
+                <select className="form-input" value={form.companySize} onChange={e => set('companySize', e.target.value)}>
                   <option value="">Select size</option>
                   {SIZES.map(s => <option key={s} value={s}>{s} employees</option>)}
                 </select>
@@ -88,9 +81,7 @@ export default function CompanyRegister() {
                 value={form.companyDescription} onChange={e => set('companyDescription', e.target.value)} />
             </div>
 
-            <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.8px', marginTop: 4 }}>
-              Account Details
-            </p>
+            <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.8px', marginTop: 4 }}>Account Details</p>
 
             <div className="form-group">
               <label className="form-label">Your Name *</label>
@@ -118,12 +109,10 @@ export default function CompanyRegister() {
 
           <div className="divider" />
           <p style={{ textAlign: 'center', fontSize: 14, color: 'var(--text-2)' }}>
-            Already registered?{' '}
-            <Link to="/login" style={{ color: 'var(--primary)', fontWeight: 600 }}>Sign in</Link>
+            Already registered? <Link to="/login" style={{ color: 'var(--primary)', fontWeight: 600 }}>Sign in</Link>
           </p>
           <p style={{ textAlign: 'center', fontSize: 14, color: 'var(--text-2)', marginTop: 10 }}>
-            Looking for a job?{' '}
-            <Link to="/register" style={{ color: 'var(--accent)', fontWeight: 600 }}>Create a seeker account</Link>
+            Looking for a job? <Link to="/register" style={{ color: 'var(--accent)', fontWeight: 600 }}>Seeker account →</Link>
           </p>
         </div>
       </div>

@@ -5,17 +5,14 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 
 export default function Login() {
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [form, setForm]     = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
   const { login, isAuthenticated } = useAuth();
-  const toast = useToast();
+  const toast    = useToast();
   const navigate = useNavigate();
   const location = useLocation();
 
-  if (isAuthenticated()) {
-    navigate('/');
-    return null;
-  }
+  if (isAuthenticated()) { navigate('/'); return null; }
 
   const from = location.state?.from?.pathname || '/';
 
@@ -25,11 +22,14 @@ export default function Login() {
     setLoading(true);
     try {
       const res = await loginUser(form);
-      login(res.data.token, res.data.user);
+      // Token is now in httpOnly cookie — server set it automatically
+      // We just pass user info to context
+      login(res.data.user);
       toast.success(`Welcome back, ${res.data.user.name}! 👋`);
-      if (res.data.user.role === 'company') navigate('/company/dashboard');
-      else if (res.data.user.role === 'admin') navigate('/company/dashboard');
-      else navigate(from);
+      if (res.data.user.role === 'company' || res.data.user.role === 'admin')
+        navigate('/company/dashboard');
+      else
+        navigate(from);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Login failed');
     } finally {
@@ -40,7 +40,6 @@ export default function Login() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div style={{ width: '100%', maxWidth: 420 }} className="fade-in">
-        {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <div style={{
             width: 52, height: 52, borderRadius: 14,
@@ -64,14 +63,12 @@ export default function Login() {
               <input type="password" className="form-input" placeholder="••••••••"
                 value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))} />
             </div>
-
             <button type="submit" disabled={loading} className="btn btn-primary btn-lg" style={{ marginTop: 4 }}>
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
 
           <div className="divider" />
-
           <p style={{ textAlign: 'center', fontSize: 14, color: 'var(--text-2)' }}>
             Don't have an account?{' '}
             <Link to="/register" style={{ color: 'var(--primary)', fontWeight: 600 }}>Create one free</Link>

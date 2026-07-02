@@ -4,17 +4,19 @@ import { ToastProvider } from './context/ToastContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
+import CookieBanner from './components/CookieBanner';
 
 // Pages
-import Home from './pages/Home';
-import Jobs from './pages/Jobs';
-import JobDetail from './pages/JobDetail';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import CompanyRegister from './pages/CompanyRegister';
-import UserDashboard from './pages/UserDashboard';
+import Home             from './pages/Home';
+import Jobs             from './pages/Jobs';
+import JobDetail        from './pages/JobDetail';
+import Login            from './pages/Login';
+import Register         from './pages/Register';
+import CompanyRegister  from './pages/CompanyRegister';
+import UserDashboard    from './pages/UserDashboard';
 import CompanyDashboard from './pages/CompanyDashboard';
-import PostJob from './pages/PostJob';
+import PostJob          from './pages/PostJob';
+import PrivacyPolicy    from './pages/PrivacyPolicy';
 
 function NotFound() {
   return (
@@ -32,25 +34,25 @@ export default function App() {
       <AuthProvider>
         <ToastProvider>
           <div className="page-wrapper">
+            <CookieBanner />
             <Navbar />
             <main className="page-content" style={{ padding: 0 }}>
               <Routes>
-                {/* Public */}
-                <Route path="/" element={<Home />} />
-                <Route path="/jobs" element={<Jobs />} />
-                <Route path="/jobs/:id" element={<JobDetail />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/company/register" element={<CompanyRegister />} />
+                {/* ── Public — koi bhi dekh sakta hai, login ki zaroorat nahi ── */}
+                <Route path="/"                    element={<Home />} />
+                <Route path="/jobs"                element={<Jobs />} />
+                <Route path="/jobs/:id"            element={<JobDetail />} />
+                <Route path="/login"               element={<Login />} />
+                <Route path="/register"            element={<Register />} />
+                <Route path="/company/register"    element={<CompanyRegister />} />
+                <Route path="/privacy-policy"      element={<PrivacyPolicy />} />
 
-                {/* Job Seeker protected */}
+                {/* ── Protected — sirf logged-in users ── */}
                 <Route path="/dashboard" element={
                   <ProtectedRoute roles={['user']}>
                     <UserDashboard />
                   </ProtectedRoute>
                 } />
-
-                {/* Company protected */}
                 <Route path="/company/dashboard" element={
                   <ProtectedRoute roles={['company', 'admin']}>
                     <CompanyDashboard />

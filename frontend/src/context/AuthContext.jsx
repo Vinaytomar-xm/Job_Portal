@@ -1,31 +1,52 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { getMe, logoutUser } from '../services/api';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('user')); } catch { return null; }
-  });
+  const [user, setUser]       = useState(null);
+  const [loading, setLoading] = useState(true); // true until session check done
 
-  const login = useCallback((token, userData) => {
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(userData));
+  useEffect(() => {
+    // Session verify karo — cookie automatically send hogi
+    // Agar cookie nahi hai ya expired → catch mein jayega, that's fine
+    // Public pages tabhi bhi kaam karengi
+    getMe()
+      .then(r => {
+        setUser(r.data.user);
+        localStorage.setItem('jb_user', JSON.stringify(r.data.user));
+      })
+      .catch(() => {
+        // Not logged in — normal case for public visitors
+        setUser(null);
+        localStorage.removeItem('jb_user');
+      })
+      .finally(() => {
+        setLoading(false); // ← yeh hona chahiye chahe success ho ya fail
+      });
+  }, []);
+
+  const login = useCallback((userData) => {
     setUser(userData);
+    localStorage.setItem('jb_user', JSON.stringify(userData));
   }, []);
 
-  const logout = useCallback(() => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+  const logout = useCallback(async () => {
+    try { await logoutUser(); } catch (_) {}
     setUser(null);
+    localStorage.removeItem('jb_user');
   }, []);
 
-  const isAuthenticated = () => !!user && !!localStorage.getItem('token');
-  const isAdmin    = () => user?.role === 'admin';
-  const isCompany  = () => user?.role === 'company' || user?.role === 'admin';
-  const isJobSeeker= () => user?.role === 'user';
+  const isAuthenticated = () => !!user;
+  const isAdmin         = () => user?.role === 'admin';
+  const isCompany       = () => user?.role === 'company' || user?.role === 'admin';
+  const isJobSeeker     = () => user?.role === 'user';
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthenticated, isAdmin, isCompany, isJobSeeker }}>
+    <AuthContext.Provider value={{
+      user, loading, login, logout,
+      isAuthenticated, isAdmin, isCompany, isJobSeeker,
+    }}>
       {children}
     </AuthContext.Provider>
   );

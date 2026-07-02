@@ -8,8 +8,8 @@ export default function Navbar() {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();   // calls POST /api/auth/logout → server clears httpOnly cookie
     navigate('/');
   };
 
