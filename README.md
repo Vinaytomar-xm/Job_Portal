@@ -154,3 +154,56 @@ Candidate's inbox ✉️
 Statuses that trigger emails: `reviewed`, `shortlisted`, `accepted`, `rejected`
 
 Each status sends only once (tracked via `emailSentFor` field on Application).
+
+---
+
+## 🔒 Security — httpOnly Cookies + GDPR
+
+### Why httpOnly Cookies instead of localStorage?
+
+| | localStorage | httpOnly Cookie |
+|---|---|---|
+| XSS Attack | ❌ JS can steal the token | ✅ JS can't read it at all |
+| CSRF Attack | ✅ Not sent automatically | ⚠️ Use SameSite=lax/none |
+| Storage | Browser JS | Secure browser cookie jar |
+| Our choice | ❌ Old approach | ✅ Current approach |
+
+### How it works in this project
+
+```
+LOGIN
+  POST /api/auth/login
+  → Server signs JWT
+  → Server calls res.cookie('jb_token', token, { httpOnly: true })
+  → Response body contains only { user: {...} }  ← NO token!
+  → Browser stores cookie automatically (not accessible by JS)
+
+EVERY REQUEST
+  axios: withCredentials: true
+  → Cookie is sent automatically with every API request
+  → Server reads it via req.cookies.jb_token
+
+LOGOUT
+  POST /api/auth/logout
+  → Server calls res.clearCookie('jb_token')
+  → Cookie is gone
+```
+
+### Cookie settings by environment
+
+| Setting | Development | Production |
+|---|---|---|
+| `secure` | false (HTTP ok) | true (HTTPS only) |
+| `sameSite` | lax | none (for cross-origin) |
+| `httpOnly` | true | true |
+| `maxAge` | 7 days | 7 days |
+
+### GDPR Cookie Banner
+
+The banner appears on first visit and offers:
+- **Necessary cookies** — always on (auth session, cannot refuse)
+- **Analytics cookies** — optional toggle
+- **Preference cookies** — optional toggle
+
+User choice is saved in `localStorage` as `jb_cookie_consent`.
+Users can reopen the banner anytime via **Footer → Cookie Preferences**.
