@@ -1,7 +1,7 @@
 const express = require('express');
-const router  = express.Router();
-const jwt     = require('jsonwebtoken');
-const User    = require('../models/User');
+const router = express.Router();
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 const { protect } = require('../middleware/auth');
 
 // ── Cookie options ────────────────────────────────────────────────
@@ -9,17 +9,17 @@ const COOKIE_NAME = 'jb_token';
 
 const cookieOptions = () => ({
   httpOnly: true,                          // JS can't read it — XSS safe
-  secure:   process.env.NODE_ENV === 'production', // HTTPS only in prod
+  secure: process.env.NODE_ENV === 'production', // HTTPS only in prod
   sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-  maxAge:   7 * 24 * 60 * 60 * 1000,     // 7 days in ms
-  path:     '/',
+  maxAge: 7 * 24 * 60 * 60 * 1000,     // 7 days in ms
+  path: '/',
 });
 
 const clearCookieOptions = () => ({
   httpOnly: true,
-  secure:   process.env.NODE_ENV === 'production',
+  secure: process.env.NODE_ENV === 'production',
   sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-  path:     '/',
+  path: '/',
 });
 
 const signToken = (id) =>
@@ -37,10 +37,10 @@ const sendAuthResponse = (res, statusCode, user, message = '') => {
   res.status(statusCode).json({
     message,
     user: {
-      _id:         user._id,
-      name:        user.name,
-      email:       user.email,
-      role:        user.role,
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
       companyName: user.companyName,
     },
   });

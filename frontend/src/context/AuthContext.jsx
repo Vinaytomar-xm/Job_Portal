@@ -4,37 +4,40 @@ import { getMe, logoutUser } from '../services/api';
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser]       = useState(null);
-  const [loading, setLoading] = useState(true); // true until session check done
+  const [user, setUser] = useState(() => {
+    // Refresh pe seedha localStorage se lo — instant, no server call needed
+    try {
+      const saved = localStorage.getItem('jb_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [loading, setLoading] = useState(false); // false — localStorage se turant mil gaya
 
   useEffect(() => {
-    // Session verify karo — cookie automatically send hogi
-    // Agar cookie nahi hai ya expired → catch mein jayega, that's fine
-    // Public pages tabhi bhi kaam karengi
+    // Sirf background mein verify karo
+    // Success → user data fresh karo
+    // Fail → kuch mat karo, localStorage wala user rahega
     getMe()
       .then(r => {
         setUser(r.data.user);
         localStorage.setItem('jb_user', JSON.stringify(r.data.user));
       })
       .catch(() => {
-        // Not logged in — normal case for public visitors
-        setUser(null);
-        localStorage.removeItem('jb_user');
-      })
-      .finally(() => {
-        setLoading(false); // ← yeh hona chahiye chahe success ho ya fail
+        // Cookie cross-origin block — IGNORE, logout mat karo
       });
   }, []);
 
   const login = useCallback((userData) => {
-    setUser(userData);
     localStorage.setItem('jb_user', JSON.stringify(userData));
+    setUser(userData);
   }, []);
 
   const logout = useCallback(async () => {
     try { await logoutUser(); } catch (_) {}
-    setUser(null);
     localStorage.removeItem('jb_user');
+    setUser(null);
   }, []);
 
   const isAuthenticated = () => !!user;
