@@ -6,7 +6,7 @@ import ApplyModal from '../components/ApplyModal';
 import { useAuth } from '../context/AuthContext';
 
 const CATEGORIES = ['All', 'Technology', 'Marketing', 'Design', 'Finance', 'Sales', 'HR', 'Operations', 'Other'];
-const TYPES      = ['All', 'Full-Time', 'Part-Time', 'Internship', 'Remote', 'Freelance', 'Contract'];
+const TYPES = ['All', 'Full-Time', 'Part-Time', 'Internship', 'Remote', 'Freelance', 'Contract'];
 const EXPERIENCE = ['All', 'Fresher', '0-1 years', '1-3 years', '3-5 years', '5+ years'];
 
 export default function Jobs() {
@@ -16,8 +16,8 @@ export default function Jobs() {
   const [loading, setLoading] = useState(true);
   const [appliedIds, setAppliedIds] = useState([]);
   const [applyJob, setApplyJob] = useState(null);
-  const [searchParams, setSearchParams] = useSearchParams();
-  const { isAuthenticated, isJobSeeker } = useAuth();
+  const [searchParams] = useSearchParams();
+  const { user } = useAuth(); // ← functions nahi, sirf user object lo
 
   const [filters, setFilters] = useState({
     search: searchParams.get('search') || '',
@@ -50,14 +50,15 @@ export default function Jobs() {
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
-  // Load applied job IDs for logged-in job seekers
+  // ── Applied jobs — sirf ek baar load karo, filter pe nahi ──────
+  // user?.role check karo — functions nahi (woh har render pe naya ref bante hain)
   useEffect(() => {
-    if (isAuthenticated() && isJobSeeker()) {
-      getMyApplications().then(r => {
-        setAppliedIds(r.data.applications.map(a => a.job?._id));
-      }).catch(() => {});
+    if (user?.role === 'user') {
+      getMyApplications()
+        .then(r => setAppliedIds(r.data.applications.map(a => a.job?._id)))
+        .catch(() => { }); // 401 ignore — interceptor bhi logout nahi karega
     }
-  }, [isAuthenticated, isJobSeeker]);
+  }, [user?._id]); // ← sirf user ID pe depend karo, functions pe nahi
 
   const setFilter = (key, val) => setFilters(prev => ({ ...prev, [key]: val, page: 1 }));
 
@@ -78,18 +79,16 @@ export default function Jobs() {
         </div>
 
         <div style={{ display: 'flex', gap: 24 }}>
-          {/* ── Sidebar Filters ── */}
+          {/* Sidebar Filters */}
           <aside style={{ width: 220, flexShrink: 0 }}>
             <div className="card" style={{ position: 'sticky', top: 80 }}>
               <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 20, color: 'var(--text-1)' }}>Filters</h3>
-
               <FilterGroup label="Job Type" options={TYPES} value={filters.type}
                 onChange={v => setFilter('type', v)} />
               <FilterGroup label="Category" options={CATEGORIES} value={filters.category}
                 onChange={v => setFilter('category', v)} />
               <FilterGroup label="Experience" options={EXPERIENCE} value={filters.experience}
                 onChange={v => setFilter('experience', v)} />
-
               <button onClick={() => setFilters({ search: '', category: 'All', type: 'All', experience: 'All', page: 1 })}
                 className="btn btn-ghost btn-sm" style={{ width: '100%', marginTop: 8 }}>
                 Clear Filters
@@ -97,7 +96,7 @@ export default function Jobs() {
             </div>
           </aside>
 
-          {/* ── Job Listings ── */}
+          {/* Job Listings */}
           <main style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <p style={{ fontSize: 14, color: 'var(--text-2)' }}>
@@ -124,8 +123,6 @@ export default function Jobs() {
                     />
                   ))}
                 </div>
-
-                {/* Pagination */}
                 {pages > 1 && (
                   <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 32 }}>
                     {Array.from({ length: pages }, (_, i) => i + 1).map(p => (
