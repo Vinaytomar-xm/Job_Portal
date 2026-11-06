@@ -7,10 +7,10 @@ import { useAuth } from '../context/AuthContext';
 
 const CATEGORIES = ['Technology', 'Marketing', 'Design', 'Finance', 'Sales', 'HR', 'Operations'];
 const STATS = [
-  { value: '10,000+', label: 'Jobs Posted' },
-  { value: '5,000+', label: 'Companies' },
-  { value: '50,000+', label: 'Candidates' },
-  { value: '95%', label: 'Placement Rate' },
+  { value: 'Growing', label: 'Job Listings' },
+  { value: 'Free',    label: 'To Use' },
+  { value: 'Instant', label: 'Applications' },
+  { value: '100%',    label: 'Legitimate Jobs' },
 ];
 
 export default function Home() {
@@ -25,7 +25,7 @@ export default function Home() {
   useEffect(() => {
     getFeatured()
       .then(r => setFeaturedJobs(r.data.jobs || []))
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false));
   }, []);
 
