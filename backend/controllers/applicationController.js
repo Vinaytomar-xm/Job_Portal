@@ -1,0 +1,100 @@
+const Application = require('../models/Application');
+const Job         = require('../models/Job');
+const asyncHandler = require('../utils/asyncHandler');
+const { sendStatusUpdateEmail } = require('../utils/email');
+
+// POST /api/applications/:jobId/apply — user
+exports.applyToJob = asyncHandler(async (req, res) => {
+  const job = await Job.findById(req.params.jobId);
+  if (!job) return res.status(404).json({ message: 'Job not found' });
+  if (!job.isActive) return res.status(400).json({ message: 'This job is no longer accepting applications' });
+
+  const existing = await Application.findOne({ job: job._id, applicant: req.user._id });
+  if (existing) return res.status(400).json({ message: 'You have already applied for this job' });
+
+  const application = await Application.create({
+    job:         job._id,
+    applicant:   req.user._id,
+    company:     job.postedBy,
+    coverLetter: req.body.coverLetter || '',
+    resumeUrl:   req.body.resumeUrl   || req.user.resumeUrl || '',
+    status:      'pending',
+  });
+
+  await Job.findByIdAndUpdate(job._id, { $inc: { applicationsCount: 1 } });
+
+  await application.populate([
+    { path: 'job',       select: 'title companyName location type' },
+    { path: 'applicant', select: 'name email' },
+  ]);
+
+  res.status(201).json({ application, message: 'Application submitted successfully!' });
+});
+
+// GET /api/applications/my-applications — user
+exports.getMyApplications = asyncHandler(async (req, res) => {
+  const applications = await Application.find({ applicant: req.user._id })
+    .populate('job', 'title companyName location type salary category companyLogo isActive')
+    .sort({ createdAt: -1 });
+  res.json({ applications });
+});
+
+// GET /api/applications/company-applications — company
+exports.getCompanyApplications = asyncHandler(async (req, res) => {
+  const filter = req.user.role === 'admin' ? {} : { company: req.user._id };
+  const { jobId, status } = req.query;
+  if (jobId)                filter.job    = jobId;
+  if (status && status !== 'All') filter.status = status;
+
+  const applications = await Application.find(filter)
+    .populate('job',       'title location type category')
+    .populate('applicant', 'name email phone resumeUrl')
+    .sort({ createdAt: -1 });
+
+  res.json({ applications });
+});
+
+// PUT /api/applications/:id/status — company
+exports.updateStatus = asyncHandler(async (req, res) => {
+  const { status, companyNote } = req.body;
+  const validStatuses = ['pending', 'reviewed', 'shortlisted', 'accepted', 'rejected'];
+  if (!validStatuses.includes(status))
+    return res.status(400).json({ message: 'Invalid status value' });
+
+  const application = await Application.findById(req.params.id)
+    .populate('job',       'title companyName location')
+    .populate('applicant', 'name email');
+
+  if (!application) return res.status(404).json({ message: 'Application not found' });
+
+  if (req.user.role !== 'admin' && application.company.toString() !== req.user._id.toString())
+    return res.status(403).json({ message: 'Not authorized' });
+
+  const oldStatus    = application.status;
+  application.status = status;
+  if (companyNote !== undefined) application.companyNote = companyNote;
+  await application.save();
+
+  if (oldStatus !== status && application.emailSentFor !== status) {
+    application.emailSentFor = status;
+    await application.save();
+    await sendStatusUpdateEmail({
+      toEmail:     application.applicant.email,
+      toName:      application.applicant.name,
+      jobTitle:    application.job.title,
+      companyName: application.job.companyName,
+      status,
+    });
+  }
+
+  res.json({ application, message: `Application marked as ${status}` });
+});
+
+// GET /api/applications/check/:jobId — user
+exports.checkApplied = asyncHandler(async (req, res) => {
+  const application = await Application.findOne({
+    job:       req.params.jobId,
+    applicant: req.user._id,
+  });
+  res.json({ applied: !!application, application });
+});
