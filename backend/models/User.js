@@ -1,53 +1,44 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
+const bcrypt   = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
   name: {
-    type: String,
-    required: [true, 'Name is required'],
-    trim: true,
-    minlength: [2, 'Name must be at least 2 characters'],
+    type: String, required: [true, 'Name is required'],
+    trim: true, minlength: [2, 'Name must be at least 2 characters'],
   },
   email: {
-    type: String,
-    required: [true, 'Email is required'],
-    unique: true,
-    lowercase: true,
-    trim: true,
+    type: String, required: [true, 'Email is required'],
+    unique: true, lowercase: true, trim: true,
     match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email'],
   },
   password: {
-    type: String,
-    required: [true, 'Password is required'],
+    type: String, required: [true, 'Password is required'],
     minlength: [6, 'Password must be at least 6 characters'],
     select: false,
   },
-  // 'user' = job seeker | 'company' = recruiter | 'admin' = super admin
   role: {
-    type: String,
-    enum: ['user', 'company', 'admin'],
-    default: 'user',
+    type: String, enum: ['user', 'company', 'admin'], default: 'user',
   },
 
-  // ── Company-specific fields ──
-  companyName: { type: String, trim: true },
-  companyWebsite: { type: String, trim: true },
-  companySize: {
-    type: String,
-    enum: ['1-10', '11-50', '51-200', '201-500', '500+', ''],
-    default: '',
-  },
+  // ── Company fields ──
+  companyName:        { type: String, trim: true },
+  companyWebsite:     { type: String, trim: true },
+  companySize:        { type: String, enum: ['1-10', '11-50', '51-200', '201-500', '500+', ''], default: '' },
   companyDescription: { type: String, trim: true },
-  companyLogo: { type: String, trim: true }, // URL or initials fallback
+  companyLogo:        { type: String, trim: true },
 
   // ── Job-seeker fields ──
-  phone: { type: String, trim: true },
+  phone:     { type: String, trim: true },
   resumeUrl: { type: String, trim: true },
+
+  // ── Password Reset OTP ──
+  resetOtp:        { type: String, select: false },   // hashed OTP
+  resetOtpExpiry:  { type: Date,   select: false },   // expiry timestamp
+  resetOtpVerified:{ type: Boolean, default: false, select: false }, // OTP verified?
 
   createdAt: { type: Date, default: Date.now },
 }, { timestamps: true });
 
-// Hash password before save
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
   const salt = await bcrypt.genSalt(10);
