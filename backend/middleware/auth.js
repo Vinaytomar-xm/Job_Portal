@@ -1,18 +1,13 @@
-const jwt  = require('jsonwebtoken');
+const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
 const COOKIE_NAME = 'jb_token';
 
-// ── protect: must be logged in ────────────────────────────────────
-const protect = async (req, res, next) => {
+exports.protect = async (req, res, next) => {
   try {
-    // 1. Try httpOnly cookie first (preferred)
     let token = req.cookies?.[COOKIE_NAME];
-
-    // 2. Fallback: Authorization header (for API clients / Postman)
-    if (!token && req.headers.authorization?.startsWith('Bearer ')) {
+    if (!token && req.headers.authorization?.startsWith('Bearer '))
       token = req.headers.authorization.split(' ')[1];
-    }
 
     if (!token)
       return res.status(401).json({ message: 'Not authorized — please log in' });
@@ -28,11 +23,8 @@ const protect = async (req, res, next) => {
   }
 };
 
-// ── restrictTo: role guard ─────────────────────────────────────────
-const restrictTo = (...roles) => (req, res, next) => {
+exports.restrictTo = (...roles) => (req, res, next) => {
   if (!roles.includes(req.user.role))
     return res.status(403).json({ message: `Access denied. Required: ${roles.join(' or ')}` });
   next();
 };
-
-module.exports = { protect, restrictTo };
