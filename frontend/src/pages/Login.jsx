@@ -5,10 +5,10 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 
 export default function Login() {
-  const [form, setForm]     = useState({ email: '', password: '' });
+  const [form, setForm] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
   const { login, isAuthenticated } = useAuth();
-  const toast    = useToast();
+  const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -63,6 +63,13 @@ export default function Login() {
               <input type="password" className="form-input" placeholder="••••••••"
                 value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))} />
             </div>
+
+            <div style={{ textAlign: 'right', marginTop: -8 }}>
+              <Link to="/forgot-password" style={{ fontSize: 13, color: 'var(--primary)' }}>
+                Forgot password?
+              </Link>
+            </div>
+
             <button type="submit" disabled={loading} className="btn btn-primary btn-lg" style={{ marginTop: 4 }}>
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
