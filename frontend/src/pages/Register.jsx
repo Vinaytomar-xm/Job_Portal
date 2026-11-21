@@ -5,11 +5,12 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 
 export default function Register() {
-  const [form, setForm]       = useState({ name: '', email: '', password: '', phone: '' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', phone: '' });
+  const [consent, setConsent] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { login }  = useAuth();
-  const toast      = useToast();
-  const navigate   = useNavigate();
+  const { login } = useAuth();
+  const toast = useToast();
+  const navigate = useNavigate();
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
@@ -17,10 +18,11 @@ export default function Register() {
     e.preventDefault();
     if (!form.name || !form.email || !form.password) { toast.error('Please fill all required fields'); return; }
     if (form.password.length < 6) { toast.error('Password must be at least 6 characters'); return; }
+    if (!consent) { toast.error('Please agree to Terms & Privacy Policy'); return; }
     setLoading(true);
     try {
       const res = await registerUser(form);
-      login(res.data.user);   // token is in httpOnly cookie
+      login(res.data.user);
       toast.success('Account created! Welcome to JobBoard 🎉');
       navigate('/jobs');
     } catch (err) {
@@ -66,7 +68,25 @@ export default function Register() {
               <input type="password" className="form-input" placeholder="At least 6 characters"
                 value={form.password} onChange={e => set('password', e.target.value)} />
             </div>
-            <button type="submit" disabled={loading} className="btn btn-primary btn-lg" style={{ marginTop: 4 }}>
+
+            {/* ── Consent checkbox ── */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: 8, border: `1px solid ${consent ? 'rgba(108,99,255,0.4)' : 'var(--border)'}`, transition: 'border-color 0.2s' }}>
+              <input
+                type="checkbox"
+                id="terms-consent"
+                checked={consent}
+                onChange={e => setConsent(e.target.checked)}
+                style={{ marginTop: 3, cursor: 'pointer', accentColor: 'var(--primary)', width: 15, height: 15, flexShrink: 0 }}
+              />
+              <label htmlFor="terms-consent" style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.6, cursor: 'pointer' }}>
+                I agree to the{' '}
+                <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', fontWeight: 600 }}>Terms of Service</a>
+                {' '}and{' '}
+                <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', fontWeight: 600 }}>Privacy Policy</a>
+              </label>
+            </div>
+
+            <button type="submit" disabled={loading || !consent} className="btn btn-primary btn-lg" style={{ marginTop: 4, opacity: !consent ? 0.6 : 1 }}>
               {loading ? 'Creating account...' : 'Create Account'}
             </button>
           </form>
